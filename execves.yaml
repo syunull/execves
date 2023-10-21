@@ -1,0 +1,6 @@
+command: /usr/bin/printenv
+arguments: []
+environment:
+  APP_NAME: printenv
+environment_files:
+  - env-example
