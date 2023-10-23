@@ -1,6 +1,9 @@
-use std::ffi::CString;
-use std::io::{BufRead, Read};
-use std::{collections::HashMap, io::BufReader};
+use std::{
+    collections::HashMap,
+    ffi::CString,
+    fmt::Display,
+    io::{BufRead, BufReader, Read},
+};
 
 use nix::unistd::execve;
 use serde::{Deserialize, Serialize};
@@ -28,20 +31,6 @@ impl Execves {
             environment: HashMap::new(),
             environment_files: Vec::new(),
         };
-    }
-
-    pub fn arguments(mut self, arguments: &[String]) -> Self {
-        for arg in arguments {
-            self.arguments.push(arg.to_owned())
-        }
-        self
-    }
-
-    pub fn environment(mut self, environment: HashMap<&str, &str>) -> Self {
-        for (k, v) in environment {
-            self.environment.insert(k.to_owned(), v.to_owned());
-        }
-        self
     }
 
     pub fn from_reader<R>(reader: R) -> Self
@@ -72,7 +61,13 @@ impl Execves {
     }
 
     fn create_environment(&self) -> Vec<CString> {
-        let mut env: Vec<String> = self.environment.iter().map(format_env).collect();
+        let mut env: Vec<String> = std::env::vars().into_iter().map(format_env).collect();
+        env.extend(
+            self.environment
+                .iter()
+                .map(|e| format_env((&e.0, &e.1)))
+                .collect::<Vec<String>>(),
+        );
 
         for file in &self.environment_files {
             let fp = std::fs::File::open(file).unwrap();
@@ -90,6 +85,9 @@ fn create_cstring_vec(input: &[String]) -> Vec<CString> {
     input.into_iter().map(|s| CString::new(s.clone()).unwrap()).collect()
 }
 
-fn format_env(entry: (&String, &String)) -> String {
+fn format_env<T>(entry: (T, T)) -> String
+where
+    T: AsRef<str> + Display,
+{
     format!("{}={}", entry.0, entry.1)
 }
